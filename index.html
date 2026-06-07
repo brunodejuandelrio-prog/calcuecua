@@ -1,154 +1,162 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="CALCUECUA">
-    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=180&h=180&q=80">
-    
-    <title>CALCUECUA</title>
-    
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    
+    <title>CALCUECUA UNIVERSAL</title>
+    <!-- Cargamos Pyodide para ejecutar Python en el iPad -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
     <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            padding: 20px; 
-            background-color: #f9f9fb; 
-            color: #1c1c1e; 
-            margin: 0; 
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        .header { 
-            text-align: center; 
-            border-bottom: 2px solid #007aff; 
-            padding-bottom: 10px; 
-            margin-bottom: 25px; 
-            margin-top: 30px; 
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            box-sizing: border-box;
         }
-        .header h1 { 
-            color: #007aff; 
-            margin: 0; 
-            font-size: 28px; 
-            letter-spacing: 0.5px;
-        }
-        .input-container {
+        h1 {
+            color: #1d63ed;
+            font-size: 24px;
+            text-align: center;
             margin-bottom: 20px;
         }
-        .input-box { 
-            width: 100%; 
-            padding: 16px; 
-            font-size: 17px; 
-            border-radius: 12px; 
-            border: 1px solid #c7c7cc; 
-            box-sizing: border-box; 
-            background-color: white;
-            transition: border-color 0.2s;
-        }
-        .input-box:focus {
+        input {
+            width: 100%;
+            padding: 14px;
+            font-size: 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
             outline: none;
-            border-color: #007aff;
         }
-        .btn { 
-            width: 100%; 
-            background-color: #007aff; 
-            color: white; 
-            padding: 16px; 
-            font-size: 17px; 
-            border: none; 
-            border-radius: 12px; 
-            font-weight: 600; 
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,122,255,0.2);
+        input:focus {
+            border-color: #1d63ed;
         }
-        .btn:active {
-            background-color: #0056b3;
-        }
-        .bloque-resultado { 
-            background: white; 
-            padding: 20px; 
-            border-radius: 14px; 
-            box-shadow: 0 4px 16px rgba(0,0,0,0.06); 
-            margin-top: 25px; 
-            border-left: 5px solid #34c759; 
-            display: none; 
-        }
-        .titulo-analisis { 
+        button {
+            width: 100%;
+            background-color: #1d63ed;
+            color: white;
+            border: none;
+            padding: 14px;
             font-size: 16px;
-            font-weight: bold; 
-            color: #8e8e93;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 15px; 
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
         }
-        .solucion { 
-            font-size: 24px; 
-            padding: 12px 0; 
-            text-align: center; 
-            overflow-x: auto;
+        button:disabled {
+            background-color: #a0aec0;
+        }
+        .resultado-bloque {
+            margin-top: 20px;
+            padding: 15px;
+            border-left: 5px solid #48bb78;
+            background-color: #f0fff4;
+            border-radius: 8px;
+        }
+        .titulo-analisis {
+            font-weight: bold;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+        .estado {
+            text-align: center;
+            color: #718096;
+            font-size: 14px;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>🚀 CALCUECUA UNIVERSAL</h1>
-    </div>
+<div class="container">
+    <h1>🚀 CALCUECUA UNIVERSAL</h1>
+    <input type="text" id="expresion" placeholder="Ej: 2+2 o x^2 - 4 = 0" value="2+2">
+    <button id="btn-calcular" onclick="enviarCalculo()" disabled>Cargando motor matemático...</button>
     
-    <div class="input-container">
-        <input type="text" id="expresion" class="input-box" placeholder="Escribe tu cálculo o sistema (ej: x+y=5, x-y=1)">
-    </div>
-    
-    <button class="btn" onclick="enviarCalculo()">Calcular ahora</button>
-
-    <div id="resultado-bloque" class="bloque-resultado">
-        <div class="titulo-analisis">🔹 Cálculo analizado:</div>
+    <div id="resultado-bloque" class="resultado-bloque" style="display:none;">
+        <div class="titulo-analisis">🔹 CÁLCULO ANALIZADO:</div>
         <div id="contenido-resultado"></div>
     </div>
+    <div id="status" class="estado">Iniciando Python...</div>
+</div>
 
-    <script>
-        async function enviarCalculo() {
-            const entrada = document.getElementById('expresion').value;
-            if (!entrada) return;
-            
-            const bloque = document.getElementById('resultado-bloque');
-            const contenido = document.getElementById('contenido-resultado');
-            
-            contenido.innerHTML = '<div class="solucion" style="color: #8e8e93; font-size: 18px;">⏳ Procesando con SymPy...</div>';
-            bloque.style.display = 'block';
+<script>
+    let pyodideInstance = null;
 
-            try {
-                // Aquí cambiaremos esta URL local por la tuva de Render en el siguiente paso
-                const urlServidor = 'https://calcuecua.onrender.com/'; 
-                
-                const respuesta = await fetch(urlServidor, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ expresion: entrada })
-                });
-                
-                const datos = await respuesta.json();
-                contenido.innerHTML = '';
-                
-                if (datos.error) {
-                    contenido.innerHTML = `<div class="solucion" style="color: #ff3b30; font-size: 18px;">❌ ${datos.error}</div>`;
-                } else {
-                    datos.resultados.forEach(r => {
-                        contenido.innerHTML += `<div class="solucion">${r}</div>`;
-                    });
-                }
-            } catch (err) {
-                contenido.innerHTML = '<div class="solucion" style="color: #ff3b30; font-size: 18px;">❌ Error de conexión con el motor matemático</div>';
-            }
+    // Inicializar Pyodide y cargar SymPy en segundo plano
+    async function initPyodide() {
+        try {
+            pyodideInstance = await loadPyodide();
+            document.getElementById('status').innerText = "Cargando SymPy (librería)...";
+            await pyodideInstance.loadPackage("sympy");
             
-            // Re-renderizar las fórmulas matemáticas preciosas con MathJax
-            if (window.MathJax) {
-                MathJax.typeset();
-            }
+            // Configurar entorno básico de SymPy
+            await pyodideInstance.runPythonAsync(`
+                from sympy import sympify, solve, symbols
+                import sympy as sp
+                x, y, z = symbols('x y z')
+            `);
+            
+            document.getElementById('btn-calcular').innerText = "Calcular ahora";
+            document.getElementById('btn-calcular').disabled = false;
+            document.getElementById('status').innerText = "⚡ Motor local listo (Estilo Pythonista)";
+        } catch (error) {
+            document.getElementById('status').innerText = "❌ Error al cargar el motor local";
+            console.error(error);
         }
-    </script>
+    }
+
+    async function enviarCalculo() {
+        const entrada = document.getElementById('expresion').value.trim();
+        if (!entrada || !pyodideInstance) return;
+
+        const bloque = document.getElementById('resultado-bloque');
+        const contenido = document.getElementById('contenido-resultado');
+        
+        bloque.style.display = "block";
+        contenido.innerHTML = "<em>Calculando...</em>";
+
+        try {
+            // Pasar la variable de JS a Python de forma segura
+            pyodideInstance.globals.set("entrada_usuario", entrada);
+            
+            let resultado = await pyodideInstance.runPythonAsync(`
+                try:
+                    # Si tiene un signo igual, intentamos resolver como ecuación
+                    if '=' in entrada_usuario:
+                        partes = entrada_usuario.split('=')
+                        ecuacion = sp.Eq(sympify(partes[0]), sympify(partes[1]))
+                        solucion = solve(ecuacion)
+                        str(solucion)
+                    else:
+                        # Si no, simplificamos la expresión matemática
+                        str(sympify(entrada_usuario))
+                except Exception as e:
+                    f"Error: {str(e)}"
+            `);
+
+            contenido.innerHTML = `<div style="font-size: 18px; color: #2d3748; font-family: monospace;">${resultado}</div>`;
+        } catch (err) {
+            contenido.innerHTML = `<span style="color: #e53e3e;">❌ Error en el formato del cálculo</span>`;
+        }
+    }
+
+    // Arrancar el motor al cargar la página
+    initPyodide();
+</script>
+
 </body>
 </html>
