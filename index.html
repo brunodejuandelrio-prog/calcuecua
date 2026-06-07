@@ -140,7 +140,7 @@
                         partes = entrada_usuario.split('=')
                         ecuacion = sp.Eq(sympify(partes[0]), sympify(partes[1]))
                         solucion = solve(ecuacion)
-                        str(solucion)
+                        return str(solucion)
                     else:
                         # Si no, simplificamos la expresión matemática
                         str(sympify(entrada_usuario))
