@@ -82,7 +82,7 @@
 
 <div class="container">
     <h1>🚀 CALCUECUA UNIVERSAL</h1>
-    <input type="text" id="expresion" placeholder="Ej: 2+2 o 2*x=4" value="2*x=4">
+    <input type="text" id="expresion" placeholder="Ej: 2x^2 - 1/2 = 0" value="2x^2 - 1/2 = 0">
     <button id="btn-calcular" onclick="enviarCalculo()" disabled>Cargando motor matemático...</button>
     
     <div id="resultado-bloque" class="resultado-bloque" style="display:none;">
@@ -95,23 +95,45 @@
 <script>
     let pyodideInstance = null;
 
-    // Inicializar Pyodide y cargar SymPy en segundo plano
     async function initPyodide() {
         try {
             pyodideInstance = await loadPyodide();
             document.getElementById('status').innerText = "Cargando SymPy (librería)...";
             await pyodideInstance.loadPackage("sympy");
             
-            // Configurar entorno básico de SymPy
             await pyodideInstance.runPythonAsync(`
-from sympy import sympify, solve, symbols
+from sympy import sympify, solve, symbols, Rational
 import sympy as sp
+import re
+
 x, y, z = symbols('x y z')
+
+def super_traductor(texto):
+    # 1. Limpieza inicial de espacios extraños
+    texto = texto.strip()
+    
+    # 2. Normalizar POTENCIAS (Convierte '^' o la palabra 'power' en '**')
+    texto = re.sub(r'\\s*power\\s*', '**', texto, flags=re.IGNORECASE)
+    texto = texto.replace('^', '**')
+    
+    # 3. MULTIPLICACIONES IMPLÍCITAS (Añadir el '*' oculto)
+    # Número seguido de letra: 2x -> 2*x
+    texto = re.sub(r'(\\d)([a-zA-Z])', r'\\1*\\2', texto)
+    # Letra seguida de número: x2 -> x*2
+    texto = re.sub(r'([a-zA-Z])(\\d)', r'\\1*\\2', texto)
+    # Número seguido de paréntesis: 2(x+1) -> 2*(x+1)
+    texto = re.sub(r'(\\d)\\(', r'\\1*(', texto)
+    # Paréntesis seguido de letra: (x+1)x -> (x+1)*x
+    texto = re.sub(r'\\)([a-zA-Z])', r')*\\1', texto)
+    # Paréntesis seguido de paréntesis: (x+1)(x-2) -> (x+1)*(x-2)
+    texto = re.sub(r'\\)\\(', r')*(', texto)
+    
+    return texto
             `);
             
             document.getElementById('btn-calcular').innerText = "Calcular ahora";
             document.getElementById('btn-calcular').disabled = false;
-            document.getElementById('status').innerText = "⚡ Motor local listo (Estilo Pythonista)";
+            document.getElementById('status').innerText = "⚡ Motor local listo (Modo Inteligente)";
         } catch (error) {
             document.getElementById('status').innerText = "❌ Error al cargar el motor local";
             console.error(error);
@@ -126,22 +148,33 @@ x, y, z = symbols('x y z')
         const contenido = document.getElementById('contenido-resultado');
         
         bloque.style.display = "block";
-        contenido.innerHTML = "<em>Calculando...</em>";
+        contenido.innerHTML = "<em>Traduciendo y calculando...</em>";
 
         try {
-            // Pasamos la entrada a Python de forma limpia
             pyodideInstance.globals.set("entrada_usuario", entrada);
             
-            // Ejecutamos una función de Python estructurada para evitar fallos de indentación
             let resultado = await pyodideInstance.runPythonAsync(`
 def procesar():
     try:
-        if '=' in entrada_usuario:
-            partes = entrada_usuario.split('=')
-            ecuacion = sp.Eq(sympify(partes[0]), sympify(partes[1]))
-            return str(solve(ecuacion))
+        # Traducir la entrada del usuario automáticamente
+        entrada_limpia = super_traductor(entrada_usuario)
+        
+        # Evaluar con SymPy forzando el modo fraccionario/racional exacto (evaluate=True)
+        # transformations='all' permite que SymPy entienda divisiones de enteros como fracciones exactas
+        from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
+        transformaciones = standard_transformations
+        
+        if '=' in entrada_limpia:
+            partes = entrada_limpia.split('=')
+            izq = parse_expr(partes[0], transformations=transformaciones)
+            der = parse_expr(partes[1], transformations=transformaciones)
+            ecuacion = sp.Eq(izq, der)
+            solucion = solve(ecuacion)
+            return str(solucion)
         else:
-            return str(sympify(entrada_usuario))
+            expresion = parse_expr(entrada_limpia, transformations=transformaciones)
+            return str(expresion)
+            
     except Exception as e:
         return f"Error matemático: {str(e)}"
 
@@ -150,14 +183,12 @@ procesar()
 
             contenido.innerHTML = `<div style="font-size: 18px; color: #2d3748; font-family: monospace; font-weight: bold;">${resultado}</div>`;
         } catch (err) {
-            contenido.innerHTML = `<span style="color: #e53e3e;">❌ Error en el formato del código</span>`;
+            contenido.innerHTML = `<span style="color: #e53e3e;">❌ Error crítico en el analizador</span>`;
         }
     }
 
-    // Arrancar el motor al cargar la página
     initPyodide();
 </script>
 
 </body>
 </html>
-
