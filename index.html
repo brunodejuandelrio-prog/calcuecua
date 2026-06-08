@@ -16,7 +16,7 @@
             align-items: center;
         }
         .container {
-            max-width: 500px;
+            max-width: 550px;
             width: 100%;
             background: white;
             padding: 25px;
@@ -60,15 +60,35 @@
         }
         .resultado-bloque {
             margin-top: 20px;
-            padding: 15px;
+            padding: 20px;
             border-left: 5px solid #48bb78;
             background-color: #f0fff4;
             border-radius: 8px;
         }
         .titulo-analisis {
             font-weight: bold;
+            color: #2d3748;
+            font-size: 16px;
+            margin-bottom: 12px;
+            border-bottom: 1px dashed #cbd5e0;
+            padding-bottom: 5px;
+        }
+        .paso {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            font-size: 15px;
             color: #4a5568;
-            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        .resultado-final {
+            font-size: 18px;
+            color: #1a202c;
+            font-weight: bold;
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 2px solid #48bb78;
         }
         .estado {
             text-align: center;
@@ -82,11 +102,11 @@
 
 <div class="container">
     <h1>🚀 CALCUECUA UNIVERSAL</h1>
-    <input type="text" id="expresion" placeholder="Ej: 2x^2 - 1/2 = 0" value="2x = 4">
+    <input type="text" id="expresion" placeholder="Ej: 2x + 4 = 10 o x^2 - 5x + 6 = 0" value="x^2 - 5x + 6 = 0">
     <button id="btn-calcular" onclick="enviarCalculo()" disabled>Cargando motor matemático...</button>
     
     <div id="resultado-bloque" class="resultado-bloque" style="display:none;">
-        <div class="titulo-analisis">🔹 RESULTADO:</div>
+        <div class="titulo-analisis">📝 RESOLUCIÓN PASO A PASO:</div>
         <div id="contenido-resultado"></div>
     </div>
     <div id="status" class="estado">Iniciando Python...</div>
@@ -102,7 +122,7 @@
             await pyodideInstance.loadPackage("sympy");
             
             await pyodideInstance.runPythonAsync(`
-from sympy import sympify, solve, symbols, Rational
+from sympy import sympify, solve, symbols, Poly, Eq
 import sympy as sp
 import re
 
@@ -137,47 +157,72 @@ def super_traductor(texto):
         const contenido = document.getElementById('contenido-resultado');
         
         bloque.style.display = "block";
-        contenido.innerHTML = "<em>Calculando...</em>";
+        contenido.innerHTML = "<em>Analizando y resolviendo...</em>";
 
         try {
             pyodideInstance.globals.set("entrada_usuario", entrada);
             
-            let resultado = await pyodideInstance.runPythonAsync(`
-def procesar():
+            let resultado_html = await pyodideInstance.runPythonAsync(`
+def procesar_con_pasos():
     try:
         entrada_limpia = super_traductor(entrada_usuario)
         from sympy.parsing.sympy_parser import parse_expr, standard_transformations
-        transformaciones = standard_transformations
         
-        if '=' in entrada_limpia:
-            partes = entrada_limpia.split('=')
-            izq = parse_expr(partes[0], transformations=transformaciones)
-            der = parse_expr(partes[1], transformations=transformaciones)
-            ecuacion = sp.Eq(izq, der)
-            soluciones = solve(ecuacion)
+        if '=' not in entrada_limpia:
+            expr = parse_expr(entrada_limpia, transformations=standard_transformations)
+            return f'<div class="paso"><b>Operación directa:</b> Se simplifica la expresión original.</div><div class="resultado-final">Resultado: {expr}</div>'
+        
+        # Separar lados del igual
+        partes = entrada_limpia.split('=')
+        izq = parse_expr(partes[0], transformations=standard_transformations)
+        der = parse_expr(partes[1], transformations=standard_transformations)
+        
+        # Pasar todo al lado izquierdo (igualar a cero)
+        eq_expr = izq - der
+        pasos = []
+        pasos.append(f'<div class="paso"><b>Paso 1: Igualar a cero.</b> Pasamos todo al lado izquierdo:<br><code>{izq} - ({der}) = 0</code></div>')
+        
+        eq_simplificada = sp.simplify(eq_expr)
+        pasos.append(f'<div class="paso"><b>Paso 2: Simplificar términos semejantes.</b> La ecuación agrupada queda:<br><code>{eq_simplificada} = 0</code></div>')
+        
+        # Intentar analizar el grado de la ecuación usando Poly
+        try:
+            polinomio = Poly(eq_simplificada, x)
+            grado = polinomio.degree()
+        except:
+            grado = None
             
-            # Formatear la respuesta de forma bonita
-            if not soluciones:
-                return "La ecuación no tiene solución real."
-            elif len(soluciones) == 1:
-                return f"El resultado es: x = {soluciones[0]}"
-            else:
-                # Si tiene varias soluciones (como las de segundo grado)
-                lista_sols = ", ".join([str(s) for s in soluciones])
-                return f"Los resultados son: x = {lista_sols}"
+        soluciones = solve(Eq(eq_simplificada, 0))
+        
+        if grado == 1:
+            pasos.append('<div class="paso"><b>Paso 3: Ecuación de primer grado.</b> Despejamos la variable <code>x</code> aislando el término numérico.</div>')
+        elif grado == 2:
+            # Extraer coeficientes a, b, c
+            a = polinomio.all_coeffs()[0]
+            b = polinomio.all_coeffs()[1] if len(polinomio.all_coeffs()) > 1 else 0
+            c = polinomio.all_coeffs()[2] if len(polinomio.all_coeffs()) > 2 else 0
+            pasos.append(f'<div class="paso"><b>Paso 3: Ecuación de segundo grado de la forma ax² + bx + c = 0.</b><br>Identificamos los coeficientes:<br>• <b>a</b> = {a}<br>• <b>b</b> = {b}<br>• <b>c</b> = {c}</div>')
+            pasos.append(f'<div class="paso"><b>Paso 4: Aplicar fórmula general.</b> Calculamos el discriminante (b² - 4ac):<br><code>({b})² - 4*({a})*({c}) = {b**2 - 4*a*c}</code></div>')
+            
+        if not soluciones:
+            pasos.append('<div class="resultado-final">Resultado: No existen soluciones reales para esta ecuación.</div>')
+        elif len(soluciones) == 1:
+            pasos.append(f'<div class="resultado-final">¡Solución encontrada!<br>x = {soluciones[0]}</div>')
         else:
-            expresion = parse_expr(entrada_limpia, transformations=transformaciones)
-            return f"El resultado simplificado es: {expresion}"
+            lista_sols = " o ".join([f"x = {s}" for s in soluciones])
+            pasos.append(f'<div class="resultado-final">¡Soluciones encontradas!<br>{lista_sols}</div>')
+            
+        return "".join(pasos)
             
     except Exception as e:
-        return f"Error matemático: {str(e)}"
+        return f'<div class="paso" style="color:#e53e3e;">Error al descomponer los pasos: {str(e)}</div>'
 
-procesar()
+procesar_con_pasos()
             `);
 
-            contenido.innerHTML = `<div style="font-size: 18px; color: #2d3748; font-family: -apple-system, sans-serif; font-weight: 500;">${resultado}</div>`;
+            contenido.innerHTML = resultado_html;
         } catch (err) {
-            contenido.innerHTML = `<span style="color: #e53e3e;">❌ Error en el formato</span>`;
+            contenido.innerHTML = `<span style="color: #e53e3e;">❌ Error crítico en el analizador de pasos</span>`;
         }
     }
 
@@ -186,4 +231,5 @@ procesar()
 
 </body>
 </html>
+
 
