@@ -82,11 +82,11 @@
 
 <div class="container">
     <h1>🚀 CALCUECUA UNIVERSAL</h1>
-    <input type="text" id="expresion" placeholder="Ej: 2x^2 - 1/2 = 0" value="2x^2 - 1/2 = 0">
+    <input type="text" id="expresion" placeholder="Ej: 2x^2 - 1/2 = 0" value="2x = 4">
     <button id="btn-calcular" onclick="enviarCalculo()" disabled>Cargando motor matemático...</button>
     
     <div id="resultado-bloque" class="resultado-bloque" style="display:none;">
-        <div class="titulo-analisis">🔹 CÁLCULO ANALIZADO:</div>
+        <div class="titulo-analisis">🔹 RESULTADO:</div>
         <div id="contenido-resultado"></div>
     </div>
     <div id="status" class="estado">Iniciando Python...</div>
@@ -109,31 +109,20 @@ import re
 x, y, z = symbols('x y z')
 
 def super_traductor(texto):
-    # 1. Limpieza inicial de espacios extraños
     texto = texto.strip()
-    
-    # 2. Normalizar POTENCIAS (Convierte '^' o la palabra 'power' en '**')
     texto = re.sub(r'\\s*power\\s*', '**', texto, flags=re.IGNORECASE)
     texto = texto.replace('^', '**')
-    
-    # 3. MULTIPLICACIONES IMPLÍCITAS (Añadir el '*' oculto)
-    # Número seguido de letra: 2x -> 2*x
     texto = re.sub(r'(\\d)([a-zA-Z])', r'\\1*\\2', texto)
-    # Letra seguida de número: x2 -> x*2
     texto = re.sub(r'([a-zA-Z])(\\d)', r'\\1*\\2', texto)
-    # Número seguido de paréntesis: 2(x+1) -> 2*(x+1)
     texto = re.sub(r'(\\d)\\(', r'\\1*(', texto)
-    # Paréntesis seguido de letra: (x+1)x -> (x+1)*x
     texto = re.sub(r'\\)([a-zA-Z])', r')*\\1', texto)
-    # Paréntesis seguido de paréntesis: (x+1)(x-2) -> (x+1)*(x-2)
     texto = re.sub(r'\\)\\(', r')*(', texto)
-    
     return texto
             `);
             
             document.getElementById('btn-calcular').innerText = "Calcular ahora";
             document.getElementById('btn-calcular').disabled = false;
-            document.getElementById('status').innerText = "⚡ Motor local listo (Modo Inteligente)";
+            document.getElementById('status').innerText = "⚡ Motor local listo";
         } catch (error) {
             document.getElementById('status').innerText = "❌ Error al cargar el motor local";
             console.error(error);
@@ -148,7 +137,7 @@ def super_traductor(texto):
         const contenido = document.getElementById('contenido-resultado');
         
         bloque.style.display = "block";
-        contenido.innerHTML = "<em>Traduciendo y calculando...</em>";
+        contenido.innerHTML = "<em>Calculando...</em>";
 
         try {
             pyodideInstance.globals.set("entrada_usuario", entrada);
@@ -156,12 +145,8 @@ def super_traductor(texto):
             let resultado = await pyodideInstance.runPythonAsync(`
 def procesar():
     try:
-        # Traducir la entrada del usuario automáticamente
         entrada_limpia = super_traductor(entrada_usuario)
-        
-        # Evaluar con SymPy forzando el modo fraccionario/racional exacto (evaluate=True)
-        # transformations='all' permite que SymPy entienda divisiones de enteros como fracciones exactas
-        from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
+        from sympy.parsing.sympy_parser import parse_expr, standard_transformations
         transformaciones = standard_transformations
         
         if '=' in entrada_limpia:
@@ -169,11 +154,20 @@ def procesar():
             izq = parse_expr(partes[0], transformations=transformaciones)
             der = parse_expr(partes[1], transformations=transformaciones)
             ecuacion = sp.Eq(izq, der)
-            solucion = solve(ecuacion)
-            return str(solucion)
+            soluciones = solve(ecuacion)
+            
+            # Formatear la respuesta de forma bonita
+            if not soluciones:
+                return "La ecuación no tiene solución real."
+            elif len(soluciones) == 1:
+                return f"El resultado es: x = {soluciones[0]}"
+            else:
+                # Si tiene varias soluciones (como las de segundo grado)
+                lista_sols = ", ".join([str(s) for s in soluciones])
+                return f"Los resultados son: x = {lista_sols}"
         else:
             expresion = parse_expr(entrada_limpia, transformations=transformaciones)
-            return str(expresion)
+            return f"El resultado simplificado es: {expresion}"
             
     except Exception as e:
         return f"Error matemático: {str(e)}"
@@ -181,9 +175,9 @@ def procesar():
 procesar()
             `);
 
-            contenido.innerHTML = `<div style="font-size: 18px; color: #2d3748; font-family: monospace; font-weight: bold;">${resultado}</div>`;
+            contenido.innerHTML = `<div style="font-size: 18px; color: #2d3748; font-family: -apple-system, sans-serif; font-weight: 500;">${resultado}</div>`;
         } catch (err) {
-            contenido.innerHTML = `<span style="color: #e53e3e;">❌ Error crítico en el analizador</span>`;
+            contenido.innerHTML = `<span style="color: #e53e3e;">❌ Error en el formato</span>`;
         }
     }
 
@@ -192,3 +186,4 @@ procesar()
 
 </body>
 </html>
+
