@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CALCUECUA UNIVERSAL</title>
-    <!-- Cargamos Pyodide para ejecutar Python en el iPad -->
     <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
     <style>
         body {
@@ -83,7 +82,7 @@
 
 <div class="container">
     <h1>🚀 CALCUECUA UNIVERSAL</h1>
-    <input type="text" id="expresion" placeholder="Ej: 2+2 o x^2 - 4 = 0" value="2+2">
+    <input type="text" id="expresion" placeholder="Ej: 2+2 o 2*x=4" value="2*x=4">
     <button id="btn-calcular" onclick="enviarCalculo()" disabled>Cargando motor matemático...</button>
     
     <div id="resultado-bloque" class="resultado-bloque" style="display:none;">
@@ -105,9 +104,9 @@
             
             // Configurar entorno básico de SymPy
             await pyodideInstance.runPythonAsync(`
-                from sympy import sympify, solve, symbols
-                import sympy as sp
-                x, y, z = symbols('x y z')
+from sympy import sympify, solve, symbols
+import sympy as sp
+x, y, z = symbols('x y z')
             `);
             
             document.getElementById('btn-calcular').innerText = "Calcular ahora";
@@ -130,27 +129,28 @@
         contenido.innerHTML = "<em>Calculando...</em>";
 
         try {
-            // Pasar la variable de JS a Python de forma segura
+            // Pasamos la entrada a Python de forma limpia
             pyodideInstance.globals.set("entrada_usuario", entrada);
             
+            // Ejecutamos una función de Python estructurada para evitar fallos de indentación
             let resultado = await pyodideInstance.runPythonAsync(`
-                try:
-                    # Si tiene un signo igual, intentamos resolver como ecuación
-                    if '=' in entrada_usuario:
-                        partes = entrada_usuario.split('=')
-                        ecuacion = sp.Eq(sympify(partes[0]), sympify(partes[1]))
-                        solucion = solve(ecuacion)
-                        return str(solucion)
-                    else:
-                        # Si no, simplificamos la expresión matemática
-                        str(sympify(entrada_usuario))
-                except Exception as e:
-                    f"Error: {str(e)}"
+def procesar():
+    try:
+        if '=' in entrada_usuario:
+            partes = entrada_usuario.split('=')
+            ecuacion = sp.Eq(sympify(partes[0]), sympify(partes[1]))
+            return str(solve(ecuacion))
+        else:
+            return str(sympify(entrada_usuario))
+    except Exception as e:
+        return f"Error matemático: {str(e)}"
+
+procesar()
             `);
 
-            contenido.innerHTML = `<div style="font-size: 18px; color: #2d3748; font-family: monospace;">${resultado}</div>`;
+            contenido.innerHTML = `<div style="font-size: 18px; color: #2d3748; font-family: monospace; font-weight: bold;">${resultado}</div>`;
         } catch (err) {
-            contenido.innerHTML = `<span style="color: #e53e3e;">❌ Error en el formato del cálculo</span>`;
+            contenido.innerHTML = `<span style="color: #e53e3e;">❌ Error en el formato del código</span>`;
         }
     }
 
@@ -160,3 +160,4 @@
 
 </body>
 </html>
+
